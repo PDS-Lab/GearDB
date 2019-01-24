@@ -2,7 +2,7 @@
 #include "../hm/BitMap.h"
 namespace leveldb{
     BitMap::BitMap() {
-        //默认10000
+        //default 10000
         gsize = (10000 >> 3) + 1;
         bitmap = new char[gsize];
         memset(bitmap, 0, gsize);
@@ -21,24 +21,24 @@ namespace leveldb{
     int BitMap::get(int x) {
         int cur = x >> 3;
         int remainder = x & (7);
-        if (cur > gsize)return -1;//越界了不行
+        if (cur > gsize)return -1;
 
         return (bitmap[cur] >> remainder) & 1;
     }
 
     int BitMap::set(int x) {
-        int cur = x >> 3;//获取元素位置
-        int remainder = x & (7);//获取精确位置
+        int cur = x >> 3;
+        int remainder = x & (7);
         if (cur > gsize)return 0;
-        bitmap[cur] |= 1 << remainder;//赋值
+        bitmap[cur] |= 1 << remainder;
         return 1;
     }
 
     int BitMap::clr(int x) {
-        int cur = x >> 3;//获取元素位置
-        int remainder = x & (7);//获取精确位置
+        int cur = x >> 3;
+        int remainder = x & (7);
         if (cur > gsize)return 0;
-        bitmap[cur] ^= 1 << remainder;//赋值
+        bitmap[cur] ^= 1 << remainder;
         return 1;
     }
 

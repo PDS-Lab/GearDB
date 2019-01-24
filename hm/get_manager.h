@@ -2,7 +2,7 @@
 #define LEVELDB_GET_MANAGER_H
 
 //////
-//模块功能:获取自己管理的主模块
+//Module function: get main module
 //////
 namespace leveldb{
     class HMManager;

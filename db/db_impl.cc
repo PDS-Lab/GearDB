@@ -72,7 +72,7 @@ struct DBImpl::CompactionState {
   // State kept for output being generated
   WritableFile* outfile;          
   TableBuilder* builder;          
-  int outputs_one_index;             //每次增加输出文件的标记
+  int outputs_one_index;             //Increase the output file each time
 
   uint64_t total_bytes;
   uint64_t c_read_bytes;
@@ -1100,11 +1100,11 @@ Status DBImpl::DoMyCompactionWork(CompactionState* compact){
         compact->compaction->IsBaseLevelForKey(ikey.user_key),
         (int)last_sequence_for_key, (int)compact->smallest_snapshot);
 #endif
-    if (!drop) {  //该key-value需要下压
+    if (!drop) {  //The key-value needs to load
       // Open output file if necessary
       this_key.DecodeFrom(key);
       while(1){
-        if(no_range_key || user_comparator()->Compare(this_key.user_key(),compact->compaction->list_range_key[range_key_index]->smallest.user_key())<0){  //key小于该段的最小key
+        if(no_range_key || user_comparator()->Compare(this_key.user_key(),compact->compaction->list_range_key[range_key_index]->smallest.user_key())<0){  //key < The minimum key of the range
           if (compact->builder == NULL) {
               status = OpenCompactionOutputFile(compact);
               if (!status.ok()) {
@@ -1129,14 +1129,14 @@ Status DBImpl::DoMyCompactionWork(CompactionState* compact){
           }
           break;
         }
-        else if(user_comparator()->Compare(this_key.user_key(),compact->compaction->list_range_key[range_key_index]->largest.user_key())>0){  //key大于该段的最大key
+        else if(user_comparator()->Compare(this_key.user_key(),compact->compaction->list_range_key[range_key_index]->largest.user_key())>0){  //key > The maximum key of the range
             
-            if(range_key_index==compact->compaction->list_range_key.size()-1){   //没有range_key了
+            if(range_key_index==compact->compaction->list_range_key.size()-1){   //no range_key
               no_range_key=true;
             }
             else range_key_index++;
         }
-        else{                                                                                                             //key在该段中间
+        else{                                                                                                             //key in the range
             if(compact->compaction->list_range_key[range_key_index]->container == NULL){
               compact->compaction->list_range_key[range_key_index]->container = new Container();
             }
@@ -1184,13 +1184,13 @@ Status DBImpl::DoMyCompactionWork(CompactionState* compact){
   }
 ////////////
   while(1){
-    //1.清除list_range_key中无数据的range_key和里面无交集的文件
-    //2.将list_range_key的数据存到input_range_key
-    //3.设置grandparents，更新compaction信息，即升级compaction
-    //4.判断是否dump_grandpartents,设置dump_grandpartents
-    //5.判断是否继续gear_compaction,并设好下层窗口，无需则跳出
-    //6.进行merge_compaction，写到上层的数据写完，留下与窗口有交集的数据
-    //7.生成了list_range_key
+    //1.Clear list_range_key's range_key with nodata and Non-intersecting file
+    //2.copy list_range_key to input_range_key
+    //3.set grandparents, update compaction information,Upgrade compaction operation
+    //4.whether dump_grandpartents, set dump_grandpartents
+    //5.whether to continue gear_compaction,and set the lower window ;or break
+    //6.do merge_compaction, write to the upper level, leave new range_key
+    //7.Generate new list_range_key
     if (!status.ok()) {
       break;
     }
@@ -1340,7 +1340,7 @@ Status DBImpl::MergeCompactionWork(CompactionState* compact){
         // Open output file if necessary
         this_key.DecodeFrom(key);
         while(1){
-          if(no_range_key || user_comparator()->Compare(this_key.user_key(),compact->compaction->list_range_key[range_key_index]->smallest.user_key())<0){  //key小于该段的最小key
+          if(no_range_key || user_comparator()->Compare(this_key.user_key(),compact->compaction->list_range_key[range_key_index]->smallest.user_key())<0){  //key < The minimum key of the range
             if (compact->builder == NULL) {
                 status = OpenCompactionOutputFile(compact);
                 if (!status.ok()) {
@@ -1365,14 +1365,14 @@ Status DBImpl::MergeCompactionWork(CompactionState* compact){
             }
             break;
           }
-          else if(user_comparator()->Compare(this_key.user_key(),compact->compaction->list_range_key[range_key_index]->largest.user_key())>0){  //key大于该段的最大key
+          else if(user_comparator()->Compare(this_key.user_key(),compact->compaction->list_range_key[range_key_index]->largest.user_key())>0){  //key > The maximum key of the range
               
-              if(range_key_index==compact->compaction->list_range_key.size()-1){   //没有range_key了
+              if(range_key_index==compact->compaction->list_range_key.size()-1){   //no range_key
                 no_range_key=true;
               }
               else range_key_index++;
           }
-          else{                                                                                                             //key在该段中间
+          else{                                                                                                             //key in the range_key
               if(compact->compaction->list_range_key[range_key_index]->container == NULL){
                 compact->compaction->list_range_key[range_key_index]->container = new Container();
               }

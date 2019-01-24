@@ -2,7 +2,7 @@
 #define LEVELDB_HM_MANAGER_H
 
 //////
-//模块功能:自己管理的主模块
+//Module function: Main module
 //////
 
 #include <stdio.h>
@@ -28,22 +28,22 @@ namespace leveldb{
         HMManager(const Comparator *icmp);
         ~HMManager();
         
-        ssize_t hm_write(int level,uint64_t filenum,const void *buf,uint64_t count);   //向某层写入一个ldb文件
-        ssize_t hm_read(uint64_t filenum,void *buf,uint64_t count, uint64_t offset);   //对某个ldb文件进行读取
-        ssize_t hm_delete(uint64_t filenum);                                           //删除某个ldb文件
-        ssize_t move_file(uint64_t filenum,int to_level);                              //迁移某个ldb文件到某层
-        struct Ldbfile* get_one_table(uint64_t filenum);
+        ssize_t hm_write(int level,uint64_t filenum,const void *buf,uint64_t count);   //write a SSTable file to a level
+        ssize_t hm_read(uint64_t filenum,void *buf,uint64_t count, uint64_t offset);   //read a SSTable file
+        ssize_t hm_delete(uint64_t filenum);                                           //delete a SSTable file
+        ssize_t move_file(uint64_t filenum,int to_level);                              //move a SSTable file
+        struct Ldbfile* get_one_table(uint64_t filenum);                               //get a SSTable file pointer
 
 
-        void get_table(std::map<uint64_t, struct Ldbfile*> **table_map){ *table_map=&table_map_; };  //获取全部table
+        void get_table(std::map<uint64_t, struct Ldbfile*> **table_map){ *table_map=&table_map_; };  //get table_map
         
-        //////dump机制相关
+        //////dump relation
         void get_zone_table(uint64_t filenum,std::vector<struct Ldbfile*> **zone_table);
         bool trivial_zone_size_move(uint64_t filenum);
         void move_zone(uint64_t filenum);
         //////
 
-        //////窗口相关
+        //////compaction relation
         void update_com_window(int level);
         void get_com_window_table(int level,std::vector<struct Ldbfile*> *window_table);
         ssize_t adjust_com_window_num(int level);
@@ -51,7 +51,7 @@ namespace leveldb{
         void set_com_window_seq(int level,int num);
         //////
 
-        //////统计
+        //////statistics
         uint64_t get_zone_num();
         void get_one_level(int level,uint64_t *table_num,uint64_t *table_size);
         void get_per_level_info();
@@ -73,11 +73,11 @@ namespace leveldb{
 
         const InternalKeyComparator icmp_;
 
-        std::map<uint64_t, struct Ldbfile*> table_map_;  //<文件number，ldb信息>
-        std::vector<struct Zonefile*> zone_info_[config::kNumLevels];  //每层zone的集合
-        std::vector<struct Zonefile*> com_window_[config::kNumLevels];
+        std::map<uint64_t, struct Ldbfile*> table_map_;  //<file number, metadate pointer>
+        std::vector<struct Zonefile*> zone_info_[config::kNumLevels];  //each level of zone
+        std::vector<struct Zonefile*> com_window_[config::kNumLevels]; //each level of compaction window
 
-        //////统计
+        //////statistics
         uint64_t delete_zone_num;
         uint64_t all_table_size;
         uint64_t kv_store_sector;

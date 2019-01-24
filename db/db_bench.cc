@@ -20,7 +20,8 @@
 
 #include "../hm/get_manager.h"
 
-#define SLEEP_WAIT_FILL 0  //1表示随机写后等待compaction使各层数据平衡，不超过阈值；0表示不等待
+#define SLEEP_WAIT_FILL 0  //means waiting for compaction after fillrandom to balance the data of each level; 
+                          //0 means not waiting
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:

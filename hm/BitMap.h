@@ -1,7 +1,7 @@
 #ifndef LEVELDB_MASTER_BITMAP_H
 #define LEVELDB_MASTER_BITMAP_H 
 //////
-//模块功能:实现bitmap管理
+//Module function: bitmap management
 //////
 namespace leveldb{
     class BitMap {

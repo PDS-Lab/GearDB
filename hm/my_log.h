@@ -2,14 +2,14 @@
 #define LEVELDB_HM_LOG_H
 
 //////
-//模块功能:输出debug和统计的信息的文件操作
+//Module function: output debug and statistics
 //////
 
 #include <string>
 #include <cstdio>
 #include <cstdarg>
 
-#define GEARDB_DBBUG 0   //1将一些数据输出到文件；0则取消
+#define GEARDB_DBBUG 0   //1 output some information to the file; 0 cancel
 
 namespace leveldb{
     

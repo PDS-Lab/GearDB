@@ -395,12 +395,12 @@ class Compaction {
   int dump_grandparents;
 
   struct Range_key{
-    InternalKey smallest, largest;     //多个文件组成的最大key，最小key
-    std::vector<FileMetaData*> file;   //由多个文件组成的key范围
-    Container *container;              //与key范围有交集的key-value数据
+    InternalKey smallest, largest;     //Range_key' the smallest key,The largest key
+    std::vector<FileMetaData*> file;   //multiple files
+    Container *container;              //key-value data
   };
-  std::vector<struct Range_key*> input_range_key;  //当作输入数据的多段数据集合
-  std::vector<struct Range_key*> list_range_key;  //窗口内的多段数据集合
+  std::vector<struct Range_key*> input_range_key;  //input range_key
+  std::vector<struct Range_key*> list_range_key;  //Multi-segment data collection within a window
   struct Delete_file{
     int level;
     uint64_t file;

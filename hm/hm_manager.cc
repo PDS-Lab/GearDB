@@ -20,16 +20,16 @@ namespace leveldb{
         :icmp_(icmp) {
         ssize_t ret;
 
-        //ret = zbc_open(smr_filename, O_RDWR, &dev_);  //打开设备
-        ret = zbc_open(smr_filename, O_RDWR | O_DIRECT, &dev_);  //打开设备
+        //ret = zbc_open(smr_filename, O_RDWR, &dev_);  //Open device without O_DIRECT
+        ret = zbc_open(smr_filename, O_RDWR | O_DIRECT, &dev_);  //Open device with O_DIRECT; O_DIRECT means that Write directly to disk without cache
         if (ret != 0) {
             printf("error:%ld open failed!\n",ret);
             return ;
         }
 
-        zbc_reset_zone(dev_,0,1);    //重置所有zone
+        zbc_reset_zone(dev_,0,1);    //reset all zone
 
-        ret = zbc_list_zones(dev_,0, ZBC_RO_ALL,&zone_, &zonenum_);  //获取zone的信息
+        ret = zbc_list_zones(dev_,0, ZBC_RO_ALL,&zone_, &zonenum_);  //get zone info
         if (ret != 0) {
             printf("error:%ld zbc_list_zones failed!\n",ret);
             return ;
@@ -42,7 +42,7 @@ namespace leveldb{
         MyLog("\n  !!geardb!!  \n");
         MyLog("COM_WINDOW_SEQ:%d Verify_Table:%d Read_Whole_Table:%d Find_Table_Old:%d\n",COM_WINDOW_SEQ,Verify_Table,Read_Whole_Table,Find_Table_Old);
         MyLog("the first_zonenum_:%d zone_num:%ld\n",first_zonenum_,zonenum_);
-        //////统计
+        //////statistics
         delete_zone_num=0;
         all_table_size=0;
         kv_store_sector=0;
@@ -96,7 +96,7 @@ namespace leveldb{
 
     ssize_t HMManager::hm_alloc_zone(){
         ssize_t i;
-        for(i=first_zonenum_;i<zonenum_;i++){  //从第一个顺序写zone开始遍历
+        for(i=first_zonenum_;i<zonenum_;i++){  //Traverse from the first sequential write zone
             if(bitmap_->get(i)==0){
                 unsigned int num = 1;
                 enum zbc_reporting_options ro = ZBC_RO_ALL;
@@ -143,7 +143,7 @@ namespace leveldb{
             return 1;
         }
         write_zone=zone_info_[level][zone_info_[level].size()-1]->zone;
-        if((zone_[write_zone].zbz_length-(zone_[write_zone].zbz_write_pointer-zone_[write_zone].zbz_start))<need_size) {//当前写的zone写不下
+        if((zone_[write_zone].zbz_length-(zone_[write_zone].zbz_write_pointer-zone_[write_zone].zbz_start))<need_size) {//The current written zone can't write
             write_zone=hm_alloc_zone();
             struct Zonefile* zf=new Zonefile(write_zone);
             zone_info_[level].push_back(zf);
@@ -169,7 +169,7 @@ namespace leveldb{
             ret=zbc_pwrite(dev_, buf, sector_count, sector_ofst);
         }
         else{
-            sector_count=(count/PHY_SECTOR_SIZE+1)*(PHY_SECTOR_SIZE/512);  //与物理块对齐
+            sector_count=(count/PHY_SECTOR_SIZE+1)*(PHY_SECTOR_SIZE/512);  //Align with physical block
             //w_buf=(void *)malloc(sector_count*512);
             ret=posix_memalign(&w_buf,MEMALIGN_SIZE,sector_count*512);
             if(ret!=0){
@@ -218,7 +218,7 @@ namespace leveldb{
         sector_ofst=it->second->offset+offset/512;
         de_ofst=offset - (offset/512)*512;
 
-        sector_count=((count+de_ofst)%512) ? (count+de_ofst)/512+1 : (count+de_ofst)/512;   //与逻辑块对齐
+        sector_count=((count+de_ofst)%512) ? (count+de_ofst)/512+1 : (count+de_ofst)/512;   //Align with logical block
 
         //r_buf=(void *)malloc(sector_count*512);
         ret=posix_memalign(&r_buf,MEMALIGN_SIZE,sector_count*512);
@@ -382,7 +382,7 @@ namespace leveldb{
         }
 
         uint64_t zone_id=it->second->zone;
-        if((zone_[zone_id].zbz_length-(zone_[zone_id].zbz_write_pointer-zone_[zone_id].zbz_start)) < 64*2048){ //剩余空闲空间不足64MB，触发
+        if((zone_[zone_id].zbz_length-(zone_[zone_id].zbz_write_pointer-zone_[zone_id].zbz_start)) < 64*2048){ //The remaining free space is less than 64MB, triggering
             return true;
         }
         else return false;
@@ -462,14 +462,14 @@ namespace leveldb{
             case 0:
             case 1:
             case 2:
-                window_num = zone_info_[level].size();   //1,2层窗口的大小是整层
+                window_num = zone_info_[level].size();   //1,2 level's compaction window number is all the level
                 break;
             case 3:
             case 4:
             case 5:
             case 6:
             case 7:
-                window_num = zone_info_[level].size()/COM_WINDOW_SCALE; //其它层的窗口大小是COM_WINDOW_SCALE分之一
+                window_num = zone_info_[level].size()/COM_WINDOW_SCALE; //other level compaction window number is 1/COM_WINDOW_SCALE
                 break;
             default:
                 break;
@@ -547,7 +547,7 @@ namespace leveldb{
 
 
 
-    //////统计
+    //////statistics
     uint64_t HMManager::get_zone_num(){
         uint64_t num=0;
         int i;

@@ -69,7 +69,7 @@ static uint64_t Parsefname(std::string fname){
   return result;
 }
 
-class HMRamdomAccessFile : public RandomAccessFile {  //ldb文件的读
+class HMRamdomAccessFile : public RandomAccessFile {  //hm read file
   private:
     HMManager* hm_manager_;
     const std::string filename_;
@@ -97,7 +97,7 @@ class HMRamdomAccessFile : public RandomAccessFile {  //ldb文件的读
     }
 };
 
-class HMComRamdomAccessFile : public RandomAccessFile {  //一次读ldb文件的整个文件
+class HMComRamdomAccessFile : public RandomAccessFile {  //when compaction,we can read the entire file at once
   private:
     HMManager* hm_manager_;
     const std::string filename_;
@@ -147,12 +147,12 @@ class HMComRamdomAccessFile : public RandomAccessFile {  //一次读ldb文件的
     }
 };
 
-class HMWritableFile : public WritableFile {    //ldb文件的除了L0层写
+class HMWritableFile : public WritableFile {    //hm write file except L0 level
   private:
     HMManager* hm_manager_;
     std::string fname_;
     int level_;
-    char* buf_; //固定大小的buffer size
+    char* buf_; //Fixed buffer size
     uint64_t total_size_;
 
   public:
@@ -202,12 +202,12 @@ class HMWritableFile : public WritableFile {    //ldb文件的除了L0层写
 
 };
 
-class HMWritableFileL0 : public WritableFile {    //ldb文件的L0写
+class HMWritableFileL0 : public WritableFile {    //hm write L0 level file
   private:
     HMManager* hm_manager_;
     std::string fname_;
     int level_;
-    char* buf_; //固定大小的buffer size
+    char* buf_; 
     uint64_t total_size_;
 
   public:
