@@ -1,6 +1,6 @@
 # GearDB
 ## 1 介绍
-GearDB是论文《GearDB: A GC-free Key-Value Store on HM-SMR Drives with Gear Compaction》的实现代码，基于[LeveldDB](https://github.com/google/leveldb)进行修改。
+GearDB是论文《GearDB: A GC-free Key-Value Store on HM-SMR Drives with Gear Compaction》的实现代码，基于[LevelDB](https://github.com/google/leveldb)进行修改。
 
 
 ## 2 编译与运行
@@ -31,7 +31,7 @@ static const char smr_filename[]="/dev/sdb1";
 ```
 4. 然后可以使用out-static/db_bench来进行测试，或者通过静态链接库out-static/libleveldb.a做更多的事情。
 
-## 3 与[LeveldDB](https://github.com/google/leveldb)的不同
+## 3 与[LevelDB](https://github.com/google/leveldb)的不同
 1. 我们基于LevelDB进行修改，如果想获取源版本，可执行下面的操作：
 ```
 > git clone https://github.com/google/leveldb
@@ -62,7 +62,7 @@ build_detect_platform
 Makefile
 ```
 ## 4 致谢
-感谢[LeveldDB](https://github.com/google/leveldb)和[Libzbc](https://github.com/hgst/libzbc)！我们使用了它们来完成自己的实验。
+感谢[LevelDB](https://github.com/google/leveldb)和[Libzbc](https://github.com/hgst/libzbc)！我们使用了它们来完成自己的实验。
 ## 5 注意事项
 1. 这个版本不支持数据库的持久性。这意味着如果程序运行结束后，再打开存在的数据库，它会出现错误。我们实现了持久性，但是它会使操作过程变得麻烦一些，所以没有给出。例如在[YCSB](https://github.com/brianfrankcooper/YCSB.git)中进行测试时，它需要支持数据库的持久性，更加重要的是，它的操作流程比较繁琐，如果你需要支持持久性的版本，你可以联系*993096281@qq.com*。
 2. 我们的重点在于学术研究，在论文所述的情况下，它执行没有问题，但是并不能保证任何情况下都没有BUG，仅供于参考、学习和交流。

@@ -1,12 +1,11 @@
 # GearDB
 ## 1 Introduction
-GearDB is the implementation code of the paper "GearDB: A GC-free Key-Value Store on HM-SMR Drives with Gear Compaction", which is modified based on [LeveldDB](https://github.com/google/leveldb) to finally realize its own functions.
+GearDB is the implementation code of the paper "GearDB: A GC-free Key-Value Store on HM-SMR Drives with Gear Compaction", which is modified based on [LevelDB](https://github.com/google/leveldb) to finally realize its own functions.
 
 
 ## 2 Compilation and Run
 ### 2.1 Requiremensts
-GearDB requires the [**Libzbc**](https://github.com/hgst/libzbc) tool to replace the disk's read and write interfaces.So you must first download and install [**Libzbc**](https://github.com/hgst/libzbc).
-[**Libzbc**](https://github.com/hgst/libzbc)'s installation steps：
+GearDB requires the [**Libzbc**](https://github.com/hgst/libzbc) tool to replace the disk's read and write interfaces. So you must first download and install [**Libzbc**](https://github.com/hgst/libzbc). [**Libzbc**](https://github.com/hgst/libzbc)'s installation steps：
 ```
 > git clone https://github.com/hgst/libzbc  
 > sh ./autogen.sh
@@ -31,7 +30,7 @@ static const char smr_filename[]="/dev/sdb1";
 ```
 1. Then you can use out-static/db_bench for testing, or do more with  out-static/libleveldb.a.
 
-## 3 Different from [LeveldDB](https://github.com/google/leveldb)
+## 3 Different from [LevelDB](https://github.com/google/leveldb)
 1. We modify it based on LevelDB. If you want to get the source version, you can do the following:
 ```
 > git clone https://github.com/google/leveldb
@@ -62,7 +61,7 @@ build_detect_platform
 Makefile
 ```
 ## 4 Acknowledgement
-Thanks to [LeveldDB](https://github.com/google/leveldb) and [Libzbc](https://github.com/hgst/libzbc)! We used them to complete our experiments.
+Thanks to [LevelDB](https://github.com/google/leveldb) and [Libzbc](https://github.com/hgst/libzbc)! We used them to complete our experiments.
 ## 5 Attentions
 1. This version does not support database persistence. This means that if the existing database is opened after the program finishes running, it will get an error. We implemented persistence, but it made the operation a bit more cumbersome, so it was not given. For example, when testing in [YCSB](https://github.com/brianfrankcooper/YCSB.git), it needs to support the persistence of the database. More importantly, its operation process is cumbersome. If you need to support the persistent version, you can contact *993096281@qq.com*.
 2. Our focus is on academic research. In the case described in the paper, there is no problem with running, but there is no guarantee that there will be no bugs under any circumstances. It is for reference, learning and communication only.
