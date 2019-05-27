@@ -195,6 +195,7 @@ class HMWritableFile : public WritableFile {    //hm write file except L0 level
       if(ret>0){
           return Status::OK();
       }
+      return Status::IOError("hm_write error");
     }
 
     virtual Status Setlevel(int level = 0) { return Status::OK(); }
@@ -250,6 +251,7 @@ class HMWritableFileL0 : public WritableFile {    //hm write L0 level file
       if(ret>0){
           return Status::OK();
       }
+      return Status::IOError("hm_write error");
     }
 
     virtual Status Setlevel(int level = 0){

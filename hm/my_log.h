@@ -9,7 +9,7 @@
 #include <cstdio>
 #include <cstdarg>
 
-#define GEARDB_DBBUG 0   //1 output some information to the file; 0 cancel
+#define GEARDB_DBBUG 1   //1 output some information to the file; 0 cancel
 
 namespace leveldb{
     

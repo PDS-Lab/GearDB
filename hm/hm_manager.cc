@@ -18,25 +18,10 @@ namespace leveldb{
 
     HMManager::HMManager(const Comparator *icmp)
         :icmp_(icmp) {
-        ssize_t ret;
-
-        //ret = zbc_open(smr_filename, O_RDWR, &dev_);  //Open device without O_DIRECT
-        ret = zbc_open(smr_filename, O_RDWR | O_DIRECT, &dev_);  //Open device with O_DIRECT; O_DIRECT means that Write directly to disk without cache
-        if (ret != 0) {
-            printf("error:%ld open failed!\n",ret);
-            return ;
-        }
-
-        zbc_reset_zone(dev_,0,1);    //reset all zone
-
-        ret = zbc_list_zones(dev_,0, ZBC_RO_ALL,&zone_, &zonenum_);  //get zone info
-        if (ret != 0) {
-            printf("error:%ld zbc_list_zones failed!\n",ret);
-            return ;
-        }
-
+        
+        set_all_zonenum_and_first_zonenum(&zonenum_, &first_zonenum_);
+        
         bitmap_ = new BitMap(zonenum_);
-        first_zonenum_ = set_first_zonenum();
 
         init_log_file();
         MyLog("\n  !!geardb!!  \n");
@@ -72,68 +57,52 @@ namespace leveldb{
             }
             zone_info_[i].clear();
         }
-        if(zone_) {
-            free(zone_);
-        }
-        if(dev_){
-            zbc_close(dev_);
-        }
+        
         if(bitmap_){
             free(bitmap_);
         }
 
     }
 
-    int HMManager::set_first_zonenum(){
-        int i;
-        for(i=0;i<zonenum_;i++){
-            if(zone_[i].zbz_type==2 || zone_[i].zbz_type==3){
-                return i;
-            }
-        }
-        return 0;
+    void HMManager::set_all_zonenum_and_first_zonenum(uint64_t *zonenum, uint64_t *first_zonenum) {
+        *zonenum = 55356;
+        *first_zonenum = 524;
+        //待后续改进
     }
 
-    ssize_t HMManager::hm_alloc_zone(){
-        ssize_t i;
-        for(i=first_zonenum_;i<zonenum_;i++){  //Traverse from the first sequential write zone
-            if(bitmap_->get(i)==0){
-                unsigned int num = 1;
-                enum zbc_reporting_options ro = ZBC_RO_ALL;
-                struct zbc_zone *zone=(struct zbc_zone *)malloc(sizeof(struct zbc_zone));
-                zbc_report_zones(dev_,zone_[i].zbz_start,ro,zone,&num);
-                if(zone->zbz_write_pointer != zone_[i].zbz_start){
-                    MyLog("alloc error: zone:%ld wp:%ld\n",i,zone->zbz_write_pointer);
-                    zbc_reset_zone(dev_,zone_[i].zbz_start,0);
-                    if(zone) free(zone);
+    struct Zonefile* HMManager::hm_alloc_zone(){
+        uint64_t i;
+        for(i = first_zonenum_;i < zonenum_; i++){  //Traverse from the first sequential write zone
+            if(bitmap_->get(i) == 0){
+                char filenamebuf[100];
+                snprintf(filenamebuf,sizeof(filenamebuf),"%s/%d",smr_filename,i);
+                int fd = open(filenamebuf, O_RDWR | O_DIRECT | O_TRUNC);  //need O_TRUNC to set write_pointer = 0
+                if(fd == -1){
+                    MyLog("error:open failed! path:%s\n",filenamebuf);
                     continue;
                 }
-                if(zone) free(zone);
+                struct Zonefile* zf= new Zonefile(i, fd, 0);
                 bitmap_->set(i);
-                zone_[i].zbz_write_pointer=zone_[i].zbz_start;
-                return i;
+                
+                return zf;
             }
         }
-        printf("hm_alloc_zone failed!\n");
-        return -1;
+        printf("error:hm_alloc_zone failed!\n");
+        return NULL;
     }
     
     ssize_t HMManager::hm_free_zone(uint64_t zone){
-        ssize_t ret;
-        ret =zbc_reset_zone(dev_,zone_[zone].zbz_start,0);
-        if(ret!=0){
-            MyLog("reset zone:%ld faild! error:%ld\n",zone,ret);
-        }
+        
         bitmap_->clr(zone);
-        zone_[zone].zbz_write_pointer=zone_[zone].zbz_start;
+        //no need to delete the file, when alloc, it can set file size = 0
+        return 1;
     }
 
     ssize_t HMManager::hm_alloc(int level,uint64_t size){
-        uint64_t need_size=(size%PHY_SECTOR_SIZE)? (size/PHY_SECTOR_SIZE+1)*(PHY_SECTOR_SIZE/512) :size/512;
+        uint64_t need_size=(size%PHYSICAL_DISK_SIZE)? (size/PHYSICAL_DISK_SIZE+1)*PHYSICAL_DISK_SIZE : size;
         uint64_t write_zone=0;
         if(zone_info_[level].empty()){
-            write_zone=hm_alloc_zone();
-            struct Zonefile* zf=new Zonefile(write_zone);
+            struct Zonefile* zf = hm_alloc_zone();
             zone_info_[level].push_back(zf);
 
             if(get_zone_num()>max_zone_num){
@@ -142,10 +111,10 @@ namespace leveldb{
         
             return 1;
         }
-        write_zone=zone_info_[level][zone_info_[level].size()-1]->zone;
-        if((zone_[write_zone].zbz_length-(zone_[write_zone].zbz_write_pointer-zone_[write_zone].zbz_start))<need_size) {//The current written zone can't write
-            write_zone=hm_alloc_zone();
-            struct Zonefile* zf=new Zonefile(write_zone);
+        uint64_t write_pointer= zone_info_[level][zone_info_[level].size()-1]->write_pointer;
+
+        if((256ul*1024*1024 - write_pointer) < need_size) {//The current written zone can't write
+            struct Zonefile* zf = hm_alloc_zone();
             zone_info_[level].push_back(zf);
             if(get_zone_num()>max_zone_num){
                 max_zone_num=get_zone_num();
@@ -153,57 +122,66 @@ namespace leveldb{
         }
         return 1;
     }
+    struct Zonefile* HMManager::get_zone(uint64_t zone_id,int level){
+        std::vector<struct Zonefile*>::iterator iz=zone_info_[level].begin();
+        for(;iz!=zone_info_[level].end();iz++){
+            if(zone_id==(*iz)->zone){
+                return (*iz);
+            }
+        }
+        return NULL;
+    }
 
     ssize_t HMManager::hm_write(int level,uint64_t filenum,const void *buf,uint64_t count){
         
         hm_alloc(level,count);
         void *w_buf=NULL;
-        uint64_t write_zone=zone_info_[level][zone_info_[level].size()-1]->zone;
-        uint64_t sector_count;
-        uint64_t sector_ofst=zone_[write_zone].zbz_write_pointer;
+        struct Zonefile* zf = zone_info_[level][zone_info_[level].size()-1];
+        uint64_t write_size;
+        uint64_t write_ofst=zf->write_pointer;
         ssize_t ret;
 
         uint64_t write_time_begin=get_now_micros();
-        if(count%PHY_SECTOR_SIZE==0){
-            sector_count=count/512;
-            ret=zbc_pwrite(dev_, buf, sector_count, sector_ofst);
+        if(count%PHYSICAL_DISK_SIZE==0){
+            write_size=count;
+            ret=pwrite(zf->fd, buf, write_size, write_ofst);
         }
         else{
-            sector_count=(count/PHY_SECTOR_SIZE+1)*(PHY_SECTOR_SIZE/512);  //Align with physical block
+            write_size=(count/PHYSICAL_DISK_SIZE+1)*PHYSICAL_DISK_SIZE;  //Align with physical block
             //w_buf=(void *)malloc(sector_count*512);
-            ret=posix_memalign(&w_buf,MEMALIGN_SIZE,sector_count*512);
+            ret=posix_memalign(&w_buf,MEMALIGN_SIZE,write_size);
             if(ret!=0){
                 printf("error:%ld posix_memalign falid!\n",ret);
                 return -1;
             }
-            memset(w_buf,0,sector_count*512);
+            memset(w_buf,0,write_size);
             memcpy(w_buf,buf,count);
-            ret=zbc_pwrite(dev_, w_buf, sector_count, sector_ofst);
+            ret=pwrite(zf->fd, w_buf, write_size, write_ofst);
             free(w_buf);
         }
-        if(ret<=0){
-            printf("error:%ld hm_write falid! table:%ld\n",ret,filenum);
+        if(ret != write_size){
+            printf("error:%ld hm_write falid! table:%ld write_size:%ld\n",ret,filenum,write_size);
             return -1;
         }
         uint64_t write_time_end=get_now_micros();
         write_time += (write_time_end-write_time_begin);
 
-        zone_[write_zone].zbz_write_pointer +=sector_count;
-        struct Ldbfile *ldb= new Ldbfile(filenum,write_zone,sector_ofst,count,level);
+        zf->write_pointer += write_size;
+        struct Ldbfile *ldb= new Ldbfile(filenum,zf->zone,write_ofst,count,level);
         table_map_.insert(std::pair<uint64_t, struct Ldbfile*>(filenum,ldb));
         zone_info_[level][zone_info_[level].size()-1]->add_table(ldb);
         all_table_size += ldb->size;
-        kv_store_sector += sector_count;
+        kv_store_sector += write_size;
 
-        MyLog("write table:%ld to level-%d zone:%ld of size:%ld bytes ofst:%ld sect:%ld next:%ld\n",filenum,level,write_zone,count,sector_ofst,sector_count,sector_ofst+sector_count);
+        MyLog("write table:%ld to level-%d zone:%ld of size:%ld bytes ofst:%ld sect:%ld next:%ld\n",filenum,level,zf->zone,count,write_ofst,write_size,write_ofst+write_size);
         
-        return ret*512;
+        return write_size;
     }
 
     ssize_t HMManager::hm_read(uint64_t filenum,void *buf,uint64_t count, uint64_t offset){
         void *r_buf=NULL;
-        uint64_t sector_count;
-        uint64_t sector_ofst;
+        uint64_t read_size;
+        uint64_t read_ofst;
         uint64_t de_ofst;
         ssize_t ret;
         uint64_t read_time_begin=get_now_micros();
@@ -214,31 +192,37 @@ namespace leveldb{
             printf(" table_map_ can't find table:%ld!\n",filenum);
             return -1;
         }
-        
-        sector_ofst=it->second->offset+offset/512;
-        de_ofst=offset - (offset/512)*512;
+        struct Zonefile* zf =get_zone(it->second->zone,it->second->level);
+        if (zf == NULL) {
+            printf(" get_zone can't find zone:%ld level:%d! \n",it->second->zone,it->second->level);
+            return -1;
+        }
 
-        sector_count=((count+de_ofst)%512) ? (count+de_ofst)/512+1 : (count+de_ofst)/512;   //Align with logical block
+        
+        read_ofst=it->second->offset+(offset/LOGICAL_DISK_SIZE)*LOGICAL_DISK_SIZE;    //offset Align with logical block
+        de_ofst=offset % LOGICAL_DISK_SIZE;
+
+        read_size=((count+de_ofst)%LOGICAL_DISK_SIZE) ? ((count+de_ofst)/LOGICAL_DISK_SIZE+1)*LOGICAL_DISK_SIZE : (count+de_ofst);   //size Align with logical block
 
         //r_buf=(void *)malloc(sector_count*512);
-        ret=posix_memalign(&r_buf,MEMALIGN_SIZE,sector_count*512);
+        ret=posix_memalign(&r_buf,MEMALIGN_SIZE,read_size);
         if(ret!=0){
             printf("error:%ld posix_memalign falid!\n",ret);
             return -1;
         }
-        memset(r_buf,0,sector_count*512);
-        ret=zbc_pread(dev_, r_buf, sector_count,sector_ofst);
+        memset(r_buf,0,read_size);
+        ret=pread(zf->fd, r_buf, read_size,read_ofst);
         memcpy(buf,((char *)r_buf)+de_ofst,count);
         free(r_buf);
-        if(ret<=0){
+        if(ret != read_size){
             printf("error:%ld hm_read falid!\n",ret);
             return -1;
         }
         
         uint64_t read_time_end=get_now_micros();
         read_time +=(read_time_end-read_time_begin);
-        kv_read_sector += sector_count;
-        //MyLog("read table:%ld of size:%ld bytes file:%ld bytes\n",filenum,count,it->second->size);
+        kv_read_sector += read_size;
+        //printf("read table:%ld of size:%ld bytes read_size:%ld ofst:%ld de:%ld file:%ld bytes ofst:%ld\n",filenum,count,read_size,offset,de_ofst,it->second->size,it->second->offset);
         return count;
     }
 
@@ -254,7 +238,7 @@ namespace leveldb{
             for(;iz!=zone_info_[level].end();iz++){
                 if(zone_id==(*iz)->zone){
                     (*iz)->delete_table(ldb);
-                    if((*iz)->ldb.empty() && (zone_[zone_id].zbz_write_pointer-zone_[zone_id].zbz_start) > 128*2048){
+                    if((*iz)->ldb.empty() && (*iz)->write_pointer > 128ul*1024*1024) { //write_size > 128MB,can free it
                         struct Zonefile* zf=(*iz);
                         zone_info_[level].erase(iz);
                         if(is_com_window(level,zone_id)){
@@ -291,55 +275,60 @@ namespace leveldb{
             printf("error:move file failed! no find file:%ld\n",filenum);
             return -1;
         }
+        struct Zonefile* zf =get_zone(it->second->zone,it->second->level);
+        if (zf == NULL) {
+            printf(" get_zone can't find zone:%ld level:%d! \n",it->second->zone,it->second->level);
+            return -1;
+        }
         struct Ldbfile *ldb=it->second;
-        uint64_t sector_count=((ldb->size+PHY_SECTOR_SIZE-1)/PHY_SECTOR_SIZE)*(PHY_SECTOR_SIZE/512);
-        uint64_t sector_ofst=ldb->offset;
+        uint64_t move_size=((ldb->size+PHYSICAL_DISK_SIZE-1)/PHYSICAL_DISK_SIZE)*PHYSICAL_DISK_SIZE;  //we write it ,can move directly, need not Align with logical block
+        uint64_t read_ofst=ldb->offset; 
         uint64_t file_size=ldb->size;
         int old_level=ldb->level;
         
         uint64_t read_time_begin=get_now_micros();
         //r_buf=(void *)malloc(sector_count*512);
-        ret=posix_memalign(&r_buf,MEMALIGN_SIZE,sector_count*512);
+        ret=posix_memalign(&r_buf,MEMALIGN_SIZE,move_size);
         if(ret!=0){
             printf("error:%ld posix_memalign falid!\n",ret);
             return -1;
         }
-        memset(r_buf,0,sector_count*512);
-        ret=zbc_pread(dev_, r_buf, sector_count,sector_ofst);
-        if(ret<=0){
-            printf("error:%ld z_read falid!\n",ret);
+        memset(r_buf,0,move_size);
+        ret=pread(zf->fd, r_buf, move_size,read_ofst);
+        if(ret != move_size){
+            printf("error:%ld move pread falid!\n",ret);
             return -1;
         }
         uint64_t read_time_end=get_now_micros();
         read_time +=(read_time_end-read_time_begin);
 
         hm_delete(filenum);
-        kv_read_sector += sector_count;
+        kv_read_sector += move_size;
 
         uint64_t write_time_begin=get_now_micros();
 
-        hm_alloc(to_level,file_size);
-        uint64_t write_zone=zone_info_[to_level][zone_info_[to_level].size()-1]->zone;
-        sector_ofst=zone_[write_zone].zbz_write_pointer;
-        ret=zbc_pwrite(dev_, r_buf, sector_count, sector_ofst);
-        if(ret<=0){
-            printf("error:%ld zbc_pwrite falid!\n",ret);
+        hm_alloc(to_level,move_size);
+        struct Zonefile* wzf = zone_info_[to_level][zone_info_[to_level].size()-1];
+        uint64_t write_ofst=wzf->write_pointer;
+        ret=pwrite(wzf->fd, r_buf, move_size, write_ofst);
+        if(ret != move_size){
+            printf("error:%ld move pwrite falid!\n",ret);
             return -1;
         }
         uint64_t write_time_end=get_now_micros();
         write_time += (write_time_end-write_time_begin);
 
-        zone_[write_zone].zbz_write_pointer +=sector_count;
-        ldb= new Ldbfile(filenum,write_zone,sector_ofst,file_size,to_level);
+        wzf->write_pointer += move_size;
+        ldb= new Ldbfile(filenum,wzf->zone,write_ofst,file_size,to_level);
         table_map_.insert(std::pair<uint64_t, struct Ldbfile*>(filenum,ldb));
-        zone_info_[to_level][zone_info_[to_level].size()-1]->add_table(ldb);
+        wzf->add_table(ldb);
         
         free(r_buf);
-        kv_store_sector += sector_count;
+        kv_store_sector += move_size;
         move_file_size += file_size;
         all_table_size += file_size;
 
-        MyLog("move table:%ld from level-%d to level-%d zone:%ld of size:%ld MB\n",filenum,old_level,to_level,write_zone,file_size/1048576);
+        MyLog("move table:%ld from level-%d to level-%d zone:%ld of size:%ld MB\n",filenum,old_level,to_level,wzf->zone,file_size/1048576);
         return 1;
     }
 
@@ -381,8 +370,12 @@ namespace leveldb{
             return false;
         }
 
-        uint64_t zone_id=it->second->zone;
-        if((zone_[zone_id].zbz_length-(zone_[zone_id].zbz_write_pointer-zone_[zone_id].zbz_start)) < 64*2048){ //The remaining free space is less than 64MB, triggering
+        struct Zonefile* zf =get_zone(it->second->zone,it->second->level);
+        if (zf == NULL) {
+            printf(" get_zone can't find zone:%ld level:%d! \n",it->second->zone,it->second->level);
+            return -1;
+        }
+        if( zf->write_pointer > 192ul*1024*1024){ //The remaining free space is less than 64MB, triggering
             return true;
         }
         else return false;
@@ -575,7 +568,7 @@ namespace leveldb{
         uint64_t table_size=0;
         float percent=0;
         int zone_num=0;
-        uint64_t zone_id;
+        struct Zonefile* zf;
 
         for(i=0;i<config::kNumLevels;i++){
             get_one_level(i,&table_num,&table_size);
@@ -584,8 +577,8 @@ namespace leveldb{
             }
             else {
                 zone_num=zone_info_[i].size();
-                zone_id=zone_info_[i][zone_num-1]->zone;
-                percent=100.0*table_size/((zone_num-1)*256.0*1024*1024+(zone_[zone_id].zbz_write_pointer - zone_[zone_id].zbz_start)*512.0);
+                zf=zone_info_[i][zone_num-1];
+                percent=100.0*table_size/((zone_num-1)*256.0*1024*1024 + zf->write_pointer);
             }
             MyLog("Level-%d zone_num:%d table_num:%ld table_size:%ld MB percent:%.2f %%\n",i,zone_info_[i].size(),table_num,table_size/1048576,percent);
         }
@@ -617,13 +610,13 @@ namespace leveldb{
     }
 
     void HMManager::get_all_info(){
-        uint64_t disk_size=(get_zone_num())*zone_[first_zonenum_].zbz_length;
+        uint64_t disk_size=(get_zone_num())*256ul*1024*1024;
 
         MyLog("\nget all data!\n");
         MyLog("table_all_size:%ld MB kv_read_sector:%ld MB kv_store_sector:%ld MB disk_size:%ld MB \n",all_table_size/(1024*1024),\
-            kv_read_sector/2048,kv_store_sector/2048,disk_size/2048);
+            kv_read_sector/1048576,kv_store_sector/1048576,disk_size/1048576);
         MyLog("read_time:%.1f s write_time:%.1f s read:%.1f MB/s write:%.1f MB/s\n",1.0*read_time*1e-6,1.0*write_time*1e-6,\
-            (kv_read_sector/2048.0)/(read_time*1e-6),(kv_store_sector/2048.0)/(write_time*1e-6));
+            (kv_read_sector/1048576.0)/(read_time*1e-6),(kv_store_sector/1048576.0)/(write_time*1e-6));
         get_valid_info();
         MyLog("\n");
         
@@ -654,25 +647,26 @@ namespace leveldb{
 
     void HMManager::get_my_info(int num){
         MyLog6("\nnum:%d table_size:%ld MB kv_read_sector:%ld MB kv_store_sector:%ld MB zone_num:%ld max_zone_num:%ld move_size:%ld MB\n",num,all_table_size/(1024*1024),\
-            kv_read_sector/2048,kv_store_sector/2048,get_zone_num(),max_zone_num,move_file_size/(1024*1024));
+            kv_read_sector/1048576,kv_store_sector/1048576,get_zone_num(),max_zone_num,move_file_size/(1024*1024));
         MyLog6("read_time:%.1f s write_time:%.1f s read:%.1f MB/s write:%.1f MB/s\n",1.0*read_time*1e-6,1.0*write_time*1e-6,\
-            (kv_read_sector/2048.0)/(read_time*1e-6),(kv_store_sector/2048.0)/(write_time*1e-6));
+            (kv_read_sector/1048576.0)/(read_time*1e-6),(kv_store_sector/1048576.0)/(write_time*1e-6));
         get_valid_all_data(num);
     }
 
     void HMManager::get_valid_all_data(int num){
-        uint64_t disk_size=(get_zone_num())*zone_[first_zonenum_].zbz_length;
+        uint64_t disk_size=(get_zone_num())*256ul*1024*1024;
 
         MyLog3("\nnum:%d\n",num);
         MyLog3("table_all_size:%ld MB kv_read_sector:%ld MB kv_store_sector:%ld MB disk_size:%ld MB \n",all_table_size/(1024*1024),\
-            kv_read_sector/2048,kv_store_sector/2048,disk_size/2048);
+            kv_read_sector/1048576,kv_store_sector/1048576,disk_size/1048576);
         MyLog3("read_time:%.1f s write_time:%.1f s read:%.1f MB/s write:%.1f MB/s\n",1.0*read_time*1e-6,1.0*write_time*1e-6,\
-            (kv_read_sector/2048.0)/(read_time*1e-6),(kv_store_sector/2048.0)/(write_time*1e-6));
+            (kv_read_sector/1048576.0)/(read_time*1e-6),(kv_store_sector/1048576.0)/(write_time*1e-6));
         MyLog3("write_zone:%ld delete_zone_num:%ld max_zone_num:%ld table_num:%ld table_size:%ld MB\n",get_zone_num(),delete_zone_num,max_zone_num,table_map_.size(),all_table_size/1048576);
         uint64_t table_num;
         uint64_t table_size;
         int zone_num=0;
         uint64_t zone_id;
+        struct Zonefile* zf;
         float percent;
         std::vector<struct Zonefile*>::iterator it;
         int i;
@@ -683,8 +677,8 @@ namespace leveldb{
             }
             else {
                 zone_num=zone_info_[i].size();
-                zone_id=zone_info_[i][zone_num-1]->zone;
-                percent=100.0*table_size/((zone_num-1)*256.0*1024*1024+(zone_[zone_id].zbz_write_pointer - zone_[zone_id].zbz_start)*512.0);
+                zf=zone_info_[i][zone_num-1];
+                percent=100.0*table_size/((zone_num-1)*256.0*1024*1024 + zf->write_pointer);
             }
             MyLog3("Level-%d zone_num:%d table_num:%ld table_size:%ld MB percent:%.2f %% \n",i,zone_info_[i].size(),table_num,table_size/1048576,percent);
         }

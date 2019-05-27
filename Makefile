@@ -292,9 +292,7 @@ $(STATIC_OUTDIR)/libmemenv.a: $(STATIC_OUTDIR) $(DEVICE_OUTDIR)/libmemenv.a $(SI
 else
 $(STATIC_OUTDIR)/libleveldb.a:$(STATIC_LIBOBJECTS)
 	rm -f $@
-	$(AR) x  /usr/lib/libzbc.a 
-	$(AR) -rs $@ $(STATIC_LIBOBJECTS) libzbc_la*.o
-	rm -f libzbc_la-zbc*.o
+	$(AR) -rs $@ $(STATIC_LIBOBJECTS)
 
 $(STATIC_OUTDIR)/libmemenv.a:$(STATIC_MEMENVOBJECTS)
 	rm -f $@

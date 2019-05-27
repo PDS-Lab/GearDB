@@ -4,10 +4,12 @@
 //////
 //Module function: Some variables and structures
 //////
-
+#include <unistd.h>
 #include <vector>
 
-#define PHY_SECTOR_SIZE 4096   //Disk physical block size
+#define PHYSICAL_DISK_SIZE 4096   //Disk physical block size, write operation may align with it; get it maybe can accord to the environment in some way
+#define LOGICAL_DISK_SIZE 4096  //Disk logical block size, read operation may align with it; get it maybe can accord to the environment in some way
+
 #define COM_WINDOW_SCALE 4    //The proportion of Compaction window to the total number of zone numbers in the level
 #define HAVE_WINDOW_SCALE 4   //The level's data reaches the level threshold * 1/HAVE_WINDOW_SCALE ,then have compaction window
 
@@ -25,7 +27,7 @@
 
 namespace leveldb {
     
-    static const char smr_filename[]="";   //e.g. smr_filename[]="/dev/sdb1";
+    static const char smr_filename[]="/mnt/seqwrite";   //e.g. smr_filename[]="/mnt/seqwrite"; mount smr seqwrite dir
 
     struct Ldbfile {     //file = SSTable ,file Metadata struct
         uint64_t table;  //file name = fiel serial number
@@ -40,9 +42,11 @@ namespace leveldb {
 
     struct Zonefile {    //zone struct
         uint64_t zone; //zone num 
+        int fd;    //zone open file's fd  
+        uint64_t write_pointer; //zone's write_pointer, also offset
         
         std::vector<struct Ldbfile*> ldb; //SSTable pointers
-        Zonefile(uint64_t a):zone(a){};
+        Zonefile(uint64_t a, int b, uint64_t c):zone(a), fd(b), write_pointer(c){};
         ~Zonefile(){};
 
         void add_table(struct Ldbfile* file){

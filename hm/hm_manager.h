@@ -9,17 +9,14 @@
 #include <stdlib.h>
 #include <cstring>
 #include <map>
-#include <vector>  
+#include <vector>
+#include <unistd.h>  
 
 #include "../db/dbformat.h"
 #include "../hm/my_log.h"
 #include "../hm/BitMap.h"
 #include "../hm/hm_status.h"
 
-
-extern "C" {
-#include <libzbc/zbc.h>
-}
 
 namespace leveldb{
 
@@ -66,10 +63,8 @@ namespace leveldb{
     private:
         BitMap *bitmap_;
 
-        struct zbc_device *dev_;
-        struct zbc_zone  *zone_;
-        unsigned int zonenum_;
-        int first_zonenum_;
+        uint64_t zonenum_;   //all zone numbers
+        uint64_t first_zonenum_;   // the first seqwrite zone id
 
         const InternalKeyComparator icmp_;
 
@@ -88,9 +83,10 @@ namespace leveldb{
         uint64_t write_time;
         //////end
 
-        int set_first_zonenum();
+        void set_all_zonenum_and_first_zonenum(uint64_t *zonenum, uint64_t *first_zonenum);
         ssize_t hm_alloc(int level,uint64_t size);
-        ssize_t hm_alloc_zone();
+        struct Zonefile* hm_alloc_zone();
+        struct Zonefile* get_zone(uint64_t zone_id,int level);
         ssize_t hm_free_zone(uint64_t zone);
 
         //////

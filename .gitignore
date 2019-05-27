@@ -6,4 +6,12 @@
 *_test
 db_bench
 leveldbutil
+build_config.mk
 .vscode
+*.log
+MyLOG
+Valid_DATA.csv
+ALL_Valid_Data
+Compaction_time.csv
+OP_LOG
+OP_DATA

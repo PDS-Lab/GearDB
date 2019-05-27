@@ -78,7 +78,7 @@ static const char* FLAGS_benchmarks =
     ;*/
 
 // Number of key/values to place in database
-static int FLAGS_num = 100000;
+static int FLAGS_num = 20971520;
 //      10G = 2621440;
 //      20G = 5242880;
 //      40G = 10485760;
@@ -135,7 +135,7 @@ static bool FLAGS_use_existing_db = false;
 static bool FLAGS_reuse_logs = false;
 
 // Use the db with the following name.
-static const char* FLAGS_db = NULL;
+static const char* FLAGS_db = "/home/hm/ceshi";
 
 namespace leveldb {
 
