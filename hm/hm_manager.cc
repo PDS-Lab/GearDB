@@ -250,6 +250,7 @@ namespace leveldb{
                                 }
                             }
                         }
+                        close(zf->fd);
                         delete zf;
                         hm_free_zone(zone_id);
                         MyLog("delete zone:%ld from level-%d\n",zone_id,level);

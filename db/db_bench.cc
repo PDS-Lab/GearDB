@@ -367,6 +367,7 @@ class Benchmark {
              / 1048576.0));
     PrintWarnings();
     fprintf(stdout, "------------------------------------------------\n");
+    fflush(stdout);
   }
 
   void PrintWarnings() {

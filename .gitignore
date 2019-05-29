@@ -9,6 +9,7 @@ leveldbutil
 build_config.mk
 .vscode
 *.log
+*.out
 MyLOG
 Valid_DATA.csv
 ALL_Valid_Data
