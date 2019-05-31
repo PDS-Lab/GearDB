@@ -67,7 +67,7 @@ namespace leveldb{
     void HMManager::set_all_zonenum_and_first_zonenum(uint64_t *zonenum, uint64_t *first_zonenum) {
         *zonenum = 55356;
         *first_zonenum = 524;
-        //待后续改进
+        //To be improved
     }
 
     struct Zonefile* HMManager::hm_alloc_zone(){
