@@ -8,7 +8,7 @@ We implement GearDB based on [LevelDB](https://github.com/google/leveldb).
 
 
 ## 2 Compilation and Run
-We use zonefs to replace the read and write interfaces of the HM-SMR.Zonefs is a simple file system for Western Digital, and we don't know if the code can be open source.
+We use zonefs to replace the read and write interfaces of the HM-SMR. Zonefs is a simple file system for Western Digital, and we don't know if the code can be open source.
 
 
 Zonefs is a very simple file system exposing each zone of a zoned block device
@@ -23,9 +23,9 @@ You should Install the zonefs kernel module, then mount zonefs under a directory
 
 ### 2.2 Compilation and Run 
 
-1. Add the path of your HM-SMR drive or emulated HM-SMR drive (e.g., /dev/sdb1) in file "/GearDB/hm/hm_status.h":
+1. Add the path of your HM-SMR drive or emulated HM-SMR drive (e.g. /mnt/seqwrite) in file "/GearDB/hm/hm_status.h":
 ```
-static const char smr_filename[]="/dev/sdb1";
+static const char smr_filename[]="/mnt/seqwrite";
 ```
 2. You may need to modify all zone numbers and the first zone number in file "/GearDB/hm/hm_manager.cc". Maybe can query the directory to set them , but I think it is very low. Looking forward to using other methods.
 ```
