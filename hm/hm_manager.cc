@@ -118,7 +118,7 @@ namespace leveldb{
         return -1;
     }
     
-    ssize_t HMManager::hm_free_zone(uint64_t zone){
+    void HMManager::hm_free_zone(uint64_t zone){
         ssize_t ret;
         ret =zbc_reset_zone(dev_,zone_[zone].zbz_start,0);
         if(ret!=0){
@@ -129,7 +129,7 @@ namespace leveldb{
     }
 
     ssize_t HMManager::hm_alloc(int level,uint64_t size){
-        uint64_t need_size=(size%PHY_SECTOR_SIZE)? (size/PHY_SECTOR_SIZE+1)*(PHY_SECTOR_SIZE/512) :size/512;
+        uint64_t need_size=(size%PHYSICAL_BLOCK_SIZE)? (size/PHYSICAL_BLOCK_SIZE+1)*(PHYSICAL_BLOCK_SIZE/512) :size/512;
         uint64_t write_zone=0;
         if(zone_info_[level].empty()){
             write_zone=hm_alloc_zone();
@@ -164,12 +164,12 @@ namespace leveldb{
         ssize_t ret;
 
         uint64_t write_time_begin=get_now_micros();
-        if(count%PHY_SECTOR_SIZE==0){
+        if(count%PHYSICAL_BLOCK_SIZE==0){
             sector_count=count/512;
             ret=zbc_pwrite(dev_, buf, sector_count, sector_ofst);
         }
         else{
-            sector_count=(count/PHY_SECTOR_SIZE+1)*(PHY_SECTOR_SIZE/512);  //Align with physical block
+            sector_count=(count/PHYSICAL_BLOCK_SIZE+1)*(PHYSICAL_BLOCK_SIZE/512);  //Align with physical block
             //w_buf=(void *)malloc(sector_count*512);
             ret=posix_memalign(&w_buf,MEMALIGN_SIZE,sector_count*512);
             if(ret!=0){
@@ -215,10 +215,10 @@ namespace leveldb{
             return -1;
         }
         
-        sector_ofst=it->second->offset+offset/512;
-        de_ofst=offset - (offset/512)*512;
+        sector_ofst=it->second->offset+(offset/LOGICAL_BLOCK_SIZE)*(LOGICAL_BLOCK_SIZE/512);
+        de_ofst=offset - (offset/LOGICAL_BLOCK_SIZE)*LOGICAL_BLOCK_SIZE;
 
-        sector_count=((count+de_ofst)%512) ? (count+de_ofst)/512+1 : (count+de_ofst)/512;   //Align with logical block
+        sector_count=((count+de_ofst)%LOGICAL_BLOCK_SIZE) ? ((count+de_ofst)/LOGICAL_BLOCK_SIZE+1)*(LOGICAL_BLOCK_SIZE/512) : ((count+de_ofst)/LOGICAL_BLOCK_SIZE)*(LOGICAL_BLOCK_SIZE/512);   //Align with logical block
 
         //r_buf=(void *)malloc(sector_count*512);
         ret=posix_memalign(&r_buf,MEMALIGN_SIZE,sector_count*512);
@@ -292,7 +292,7 @@ namespace leveldb{
             return -1;
         }
         struct Ldbfile *ldb=it->second;
-        uint64_t sector_count=((ldb->size+PHY_SECTOR_SIZE-1)/PHY_SECTOR_SIZE)*(PHY_SECTOR_SIZE/512);
+        uint64_t sector_count=((ldb->size+PHYSICAL_BLOCK_SIZE-1)/PHYSICAL_BLOCK_SIZE)*(PHYSICAL_BLOCK_SIZE/512);
         uint64_t sector_ofst=ldb->offset;
         uint64_t file_size=ldb->size;
         int old_level=ldb->level;

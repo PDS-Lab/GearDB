@@ -7,7 +7,9 @@
 
 #include <vector>
 
-#define PHY_SECTOR_SIZE 4096   //Disk physical block size
+#define PHYSICAL_BLOCK_SIZE 4096   //Disk physical block size, write operation may align with it; get it maybe can accord to the environment in some way
+#define LOGICAL_BLOCK_SIZE 4096  //Disk logical block size, read operation may align with it; get it maybe can accord to the environment in some way
+
 #define COM_WINDOW_SCALE 4    //The proportion of Compaction window to the total number of zone numbers in the level
 #define HAVE_WINDOW_SCALE 4   //The level's data reaches the level threshold * 1/HAVE_WINDOW_SCALE ,then have compaction window
 

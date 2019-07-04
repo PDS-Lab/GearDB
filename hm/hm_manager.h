@@ -91,7 +91,7 @@ namespace leveldb{
         int set_first_zonenum();
         ssize_t hm_alloc(int level,uint64_t size);
         ssize_t hm_alloc_zone();
-        ssize_t hm_free_zone(uint64_t zone);
+        void hm_free_zone(uint64_t zone);
 
         //////
         bool is_com_window(int level,uint64_t zone);

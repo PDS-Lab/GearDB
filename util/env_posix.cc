@@ -192,9 +192,10 @@ class HMWritableFile : public WritableFile {    //hm write file except L0 level
 
     virtual Status Sync() { 
       ssize_t ret = hm_manager_->hm_write(level_,Parsefname(fname_), buf_, total_size_);
-      if(ret>0){
+      if(ret > 0){
           return Status::OK();
       }
+      return Status::IOError("sync error!");
     }
 
     virtual Status Setlevel(int level = 0) { return Status::OK(); }
@@ -247,9 +248,10 @@ class HMWritableFileL0 : public WritableFile {    //hm write L0 level file
 
     virtual Status Sync() { 
       ssize_t ret = hm_manager_->hm_write(level_,Parsefname(fname_), buf_, total_size_);
-      if(ret>0){
+      if(ret > 0){
           return Status::OK();
       }
+      return Status::IOError("sync error!");
     }
 
     virtual Status Setlevel(int level = 0){

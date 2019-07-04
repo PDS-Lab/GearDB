@@ -59,7 +59,7 @@ CROSS_COMPILE=
 PLATFORM_CCFLAGS=
 PLATFORM_CXXFLAGS=
 PLATFORM_LDFLAGS=
-PLATFORM_LIBS="/usr/lib/libzbc.a"
+PLATFORM_LIBS=
 PLATFORM_SHARED_EXT="so"
 PLATFORM_SHARED_LDFLAGS="-shared -Wl,-soname -Wl,"
 PLATFORM_SHARED_CFLAGS="-fPIC -fvisibility=hidden"
@@ -90,7 +90,7 @@ case "$TARGET_OS" in
     Linux)
         PLATFORM=OS_LINUX
         COMMON_FLAGS="$MEMCMP_FLAG -pthread -DOS_LINUX"
-        PLATFORM_LDFLAGS="-pthread"
+        PLATFORM_LDFLAGS="-pthread -lzbc"
         PORT_FILE=port/port_posix.cc
         ;;
     SunOS)

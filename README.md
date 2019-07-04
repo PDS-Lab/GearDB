@@ -28,12 +28,17 @@ To access HM-SMR drives, GearDB uses the [**Libzbc**](https://github.com/hgst/li
 ```
 static const char smr_filename[]="/dev/sdb1";
 ```
-3. We have modified the Makefile to make the compilation of GearDB same with LevelDB. 
+3.  Get the logic block size and physical block size of your HM-SMR drive. Set their sizes in file “/GearDB/hm/hm_status.h”. This is because write operations on HM-SMR drives should align with the PHYSICAL_BLOCK_SIZE and read operations on HM-SMR drives should align with the LOGICAL_BLOCK_SIZE.
+```
+#define PHYSICAL_BLOCK_SIZE 4096   
+#define LOGICAL_BLOCK_SIZE 4096
+```
+4. We have modified the Makefile to make the compilation of GearDB same with LevelDB. 
 
 ```
 > make -j4
 ```
-4. Now you may run and test GearDB with out-static/db_bench. The "out-static/libleveldb.a." is still available in GearDB.
+5. Now you may run and test GearDB with out-static/db_bench. The "out-static/libleveldb.a." is still available in GearDB.
 ```
 > ./out-static/db_bench
 ```

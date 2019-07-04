@@ -7,3 +7,12 @@
 db_bench
 leveldbutil
 .vscode
+build_config.mk
+*.log
+*.out
+MyLOG
+Valid_DATA.csv
+ALL_Valid_Data
+Compaction_time.csv
+OP_LOG
+OP_DATA
